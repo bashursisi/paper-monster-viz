@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kinetic Cut Visualizer (Selectable)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        canvas {
+            background-color: #f1f5f9;
+            display: block;
+            margin: 0 auto;
+            border-radius: 4px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body class="bg-slate-200 h-screen flex flex-col font-sans text-slate-800 overflow-hidden">
+
+    <!-- Header -->
+    <div class="bg-slate-900 text-white p-3 shadow-md flex justify-between items-center z-10">
+        <div class="flex items-center gap-3">
+            <div class="bg-amber-500 text-slate-900 font-black px-2 py-1 rounded text-xs tracking-widest">COMPLETE LIST</div>
+            <h1 class="font-bold text-lg tracking-tight">Production Visualizer v8</h1>
+        </div>
+        <div class="text-xs text-slate-400">
+            Feature: <span class="text-amber-400">Shot Selection Menu</span>
+        </div>
+    </div>
+
+    <div class="flex-grow flex flex-col lg:flex-row gap-4 p-4 max-h-[calc(100vh-60px)]">
+        
+        <!-- Left Sidebar -->
+        <div class="w-full lg:w-1/3 flex flex-col gap-3 h-full">
+            <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-300">
+                
+                <!-- NEW: Shot Selector Dropdown -->
+                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Jump to Shot</label>
+                <select id="shotSelector" onchange="jumpToShot(this.value)" class="w-full mb-4 p-2 text-sm border-2 border-slate-200 rounded bg-slate-50 text-slate-700 font-semibold focus:outline-none focus:border-amber-500 transition-colors cursor-pointer hover:bg-white">
+                    <!-- Options populated by JS -->
+                </select>
+
+                <div class="flex items-center justify-between mb-2">
+                    <button onclick="changeShot(-1)" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 font-bold transition">◀ Prev</button>
+                    <div class="text-center">
+                        <span class="block text-[10px] text-slate-400 uppercase tracking-widest font-bold">CURRENT</span>
+                        <span id="shotCode" class="block text-3xl font-black text-amber-600 leading-none">1.1</span>
+                    </div>
+                    <button onclick="changeShot(1)" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-white font-bold transition">Next ▶</button>
+                </div>
+                <div class="text-center text-xs text-slate-400 mt-1">Use Left/Right Arrow Keys</div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-slate-300 flex-grow overflow-y-auto flex flex-col">
+                <div class="p-4 border-b border-slate-100 bg-slate-50">
+                    <h2 id="shotTitle" class="font-bold text-lg text-slate-800">Title</h2>
+                    <div class="flex gap-2 mt-1">
+                        <span id="shotLens" class="px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-bold uppercase rounded">Lens</span>
+                        <span id="shotType" class="px-2 py-0.5 bg-purple-100 text-purple-800 text-[10px] font-bold uppercase rounded">Type</span>
+                    </div>
+                </div>
+                <div class="p-4 space-y-4">
+                    <div>
+                        <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Action / Blocking</h4>
+                        <p id="shotAction" class="text-sm font-medium text-slate-700">Action text...</p>
+                    </div>
+                    <div id="dialogueBox" class="bg-amber-50 p-3 rounded-l-2xl rounded-tr-2xl border border-amber-100">
+                        <h4 class="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">Dialogue</h4>
+                        <p id="shotDialogue" class="text-sm italic text-amber-900">"Dialogue goes here..."</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="w-full lg:w-2/3 bg-white p-1 rounded-lg shadow-sm border border-slate-300 flex flex-col">
+            <div class="relative flex-grow bg-slate-50 overflow-hidden flex items-center justify-center rounded">
+                <canvas id="stageCanvas" width="800" height="600" class="max-w-full max-h-full object-contain"></canvas>
+                <div class="absolute top-2 right-2 bg-white/90 p-2 rounded border border-slate-200 text-[10px] shadow-sm">
+                    <div class="font-bold mb-1 text-slate-500 uppercase">Map Key</div>
+                    <div class="grid grid-cols-2 gap-x-3 gap-y-1">
+                        <div class="flex items-center"><span class="w-2 h-2 bg-blue-300 rounded-full mr-1"></span> Windows (Top)</div>
+                        <div class="flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span> Door (Bottom)</div>
+                        <div class="flex items-center"><span class="w-2 h-2 bg-purple-500 rounded-full mr-1"></span> Teacher (Top-Right)</div>
+                        <div class="flex items-center"><span class="w-2 h-2 bg-gray-600 rounded-full mr-1"></span> Board (Right)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- COMPLETE SHOT DATA (1.1 - 3.27) ---
+        const shots = [
+            // SCENE 1
+            { code: "1.1", title: "Wide - Establish", lens: "Wide", type: "Static", action: "Establish quiet classroom. Camera at Door.", dialogue: "(SFX: LOUD Ticking Clock)", cam: {x:400, y:550, angle:315, fov:90}, layoutState: "sitting_all" },
+            { code: "1.2", title: "ECU - Clock", lens: "Macro", type: "Hard Cut", action: "Second hand ticks 2 times.", dialogue: "(SFX: Tick... Tick...)", cam: {x:650, y:250, angle:0, fov:20}, layoutState: "sitting_all" },
+            { code: "1.3", title: "Low Angle POV", lens: "Wide", type: "Floor Cam", action: "POV from floor (near Desk) looking up.", dialogue: "(Silence)", cam: {x:650, y:150, angle:270, fov:90}, layoutState: "sitting_all" },
+            { code: "1.4", title: "Medium - Siyajîn", lens: "Standard", type: "Static", action: "Siyajîn leans back annoyed.", dialogue: "'Oh no. A substitute teacher is coming...'", cam: {x:500, y:400, angle:180, fov:40}, highlight: 'siyajin', layoutState: "sitting_all" },
+            { code: "1.5", title: "Crash Zoom - Bejna", lens: "Zoom", type: "Kinetic Lunge", action: "LUNGE to Bejna. She stands.", dialogue: "'Our teacher is never late...'", cam: {x:550, y:300, angle:180, fov:50}, move: {startX:550, startY:300, endX:450, endY:300}, highlight: 'bejna', layoutState: "bejna_stands" },
+            { code: "1.6", title: "Whip Pan Sequence", lens: "Wide", type: "Whip Pan", action: "Pan: Empty Desk -> Bagless Chair.", dialogue: "'No bag. No phone.'", cam: {x:600, y:150, angle:315, fov:70}, move: {type:'pan', angles:[270, 360]}, layoutState: "bejna_stands" },
+            { code: "1.7", title: "Medium - Rênas", lens: "Standard", type: "Static", action: "Rênas reads calmly.", dialogue: "'Maybe she is with the principal...'", cam: {x:500, y:200, angle:180, fov:40}, highlight: 'renas', layoutState: "bejna_stands" },
+            { code: "1.8", title: "Close Up - Rizgar", lens: "Long", type: "Cut on Action", action: "Rizgar biting nails.", dialogue: "'I am very nervous!'", cam: {x:450, y:180, angle:180, fov:30}, highlight: 'rizgar', layoutState: "bejna_stands" },
+            
+            // SCENE 2
+            { code: "2.9", title: "Medium - Bejna", lens: "Standard", type: "Hero Shot", action: "Bejna takes charge.", dialogue: "'Okay team. Be quiet...'", cam: {x:500, y:300, angle:180, fov:50}, highlight: 'bejna', layoutState: "bejna_stands" },
+            { code: "2.10", title: "Low Angle - Siyajîn", lens: "Wide", type: "Kinetic", action: "Siyajîn JUMPS onto chair!", dialogue: "'She is the big winner...'", cam: {x:400, y:500, angle:0, fov:75}, highlight: 'siyajin', layoutState: "siyajin_jumps" },
+            { code: "2.11", title: "Two Shot", lens: "Standard", type: "Static", action: "Rênas & Siyajîn. Rênas sighs.", dialogue: "'No, that’s not possible.'", cam: {x:480, y:300, angle:180, fov:60}, highlight: 'renas', layoutState: "bejna_stands" },
+            { code: "2.12", title: "OTS - Huddle", lens: "Standard", type: "OTS", action: "Group leans in fast.", dialogue: "'No, it's a secret...'", cam: {x:350, y:300, angle:0, fov:45}, highlight: 'asmin', layoutState: "group_huddle" },
+            { code: "2.13", title: "Close Up - Dara", lens: "Long", type: "Static", action: "Dara looks around suspiciously.", dialogue: "'Maybe she is invisible!'", cam: {x:450, y:420, angle:180, fov:30}, highlight: 'dara', layoutState: "group_huddle" },
+            { code: "2.14", title: "Lock-Off (VFX)", lens: "Standard", type: "Locked", action: "Marker writes 'HELLO' on board.", dialogue: "(SFX: Squeak)", cam: {x:600, y:300, angle:0, fov:50}, highlight: 'board', layoutState: "sitting_all" },
+            { code: "2.15", title: "Crash Zoom - Dara", lens: "Zoom", type: "Kinetic", action: "Zoom on Dara pointing!", dialogue: "'Look! The marker!'", cam: {x:450, y:420, angle:180, fov:40}, move: {startX:450, startY:420, endX:350, endY:420}, highlight: 'dara', layoutState: "sitting_all" },
+            { code: "2.16", title: "Wide - The Scare", lens: "Wide", type: "Action", action: "All students jump back!", dialogue: "'AAAAHH!!'", cam: {x:400, y:300, angle:0, fov:80}, layoutState: "scare_jump" },
+            { code: "2.17", title: "ECU - Rizgar", lens: "Macro", type: "Static", action: "Rizgar shaking.", dialogue: "'A ghost?!'", cam: {x:300, y:180, angle:180, fov:25}, highlight: 'rizgar', layoutState: "scare_jump" },
+            { code: "2.18", title: "Medium - Rênas", lens: "Standard", type: "Static", action: "Rênas rolls eyes.", dialogue: "'Just the wind...'", cam: {x:350, y:180, angle:180, fov:40}, highlight: 'renas', layoutState: "sitting_all" },
+            { code: "2.19", title: "Tracking - Bejna", lens: "Wide", type: "Tracking", action: "Bejna pacing. Handheld.", dialogue: "'I think she is... captured!'", cam: {x:500, y:300, angle:180, fov:60}, move: {type:'pan', angles:[160, 200]}, highlight: 'bejna', layoutState: "bejna_pacing" },
+            { code: "2.20", title: "Whip Pan - Spy", lens: "Wide", type: "Whip Pan", action: "Siyajîn Spy Pose. Whip Right.", dialogue: "'By spies!'", cam: {x:450, y:420, angle:180, fov:50}, highlight: 'siyajin', layoutState: "sitting_all" },
+            
+            // INSERTS
+            { code: "2.20A", title: "POV - Hallway", lens: "Wide", type: "Shaky", action: "Running down hallway.", dialogue: "(SFX: Footsteps)", cam: {x:400, y:650, angle:90, fov:80}, layoutState: "sitting_all" },
+            { code: "2.20B", title: "Low - Spies", lens: "Wide", type: "Low Angle", action: "Two spies blocking way.", dialogue: "(Music Sting)", cam: {x:400, y:680, angle:270, fov:70}, layoutState: "sitting_all" },
+            { code: "2.20C", title: "Dutch Angle", lens: "Standard", type: "Tilted", action: "Siyajîn into watch.", dialogue: "'Eagle is captured.'", cam: {x:450, y:420, angle:160, fov:40}, highlight: 'siyajin', layoutState: "sitting_all" },
+            
+            // BACK TO ROOM
+            { code: "2.21", title: "Close Up - Asmîn", lens: "Long", type: "Static", action: "Asmîn points to corner.", dialogue: "'It is the school monster.'", cam: {x:400, y:300, angle:180, fov:35}, highlight: 'asmin', layoutState: "sitting_all" },
+            { code: "2.22", title: "Medium - Asmîn", lens: "Standard", type: "Crash Zoom", action: "Claw hands. Zoom on 'Hungry'.", dialogue: "'It is very hungry.'", cam: {x:400, y:300, angle:180, fov:45}, move: {startX:400, startY:300, endX:320, endY:300}, highlight: 'asmin', layoutState: "sitting_all" },
+            
+            // CLOSET
+            { code: "2.22A", title: "POV - Flashlight", lens: "Wide", type: "POV", action: "Dark room. Searching.", dialogue: "(Breathing)", cam: {x:100, y:500, angle:45, fov:60}, layoutState: "sitting_all" },
+            { code: "2.22B", title: "Reveal - Monster", lens: "Standard", type: "Jump Scare", action: "Light lands on Mop.", dialogue: "(JUMP SCARE SOUND)", cam: {x:120, y:520, angle:45, fov:50}, layoutState: "sitting_all" },
+            
+            // ENDING
+            { code: "2.23", title: "Low Angle - Bejna", lens: "Wide", type: "Hero", action: "Bejna points to door.", dialogue: "'Let's go!'", cam: {x:500, y:300, angle:180, fov:60}, highlight: 'bejna', layoutState: "bejna_stands" },
+            { code: "2.24", title: "High Angle - Rizgar", lens: "Wide", type: "High Angle", action: "Rizgar hides under desk.", dialogue: "'I am too small!'", cam: {x:280, y:180, angle:0, fov:70}, highlight: 'rizgar', layoutState: "rizgar_hiding" },
+            
+            // SCENE 3
+            { code: "3.25", title: "Doorway Silhouette", lens: "Wide", type: "Low Angle", action: "Teacher enters door.", dialogue: "'The photocopy machine...'", cam: {x:400, y:550, angle:90, fov:80}, layoutState: "teacher_enter" },
+            { code: "3.26", title: "Group Shot", lens: "Wide", type: "Static", action: "Students slump shoulders.", dialogue: "'A paper monster?'", cam: {x:600, y:300, angle:180, fov:70}, layoutState: "group_slump" },
+            { code: "3.27", title: "Slow Zoom - Rênas", lens: "Standard", type: "Zoom", action: "Fourth Wall Break.", dialogue: "'See? I am always right.'", cam: {x:500, y:200, angle:180, fov:40}, move: {startX:500, startY:200, endX:450, endY:200}, highlight: 'renas', layoutState: "sitting_all" }
+        ];
+
+        let currentIndex = 0;
+        const canvas = document.getElementById('stageCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Layout Constants
+        const DOOR_X = 400, DOOR_Y = 580;
+        const BOARD_X = 760;
+        
+        // Students: Facing Right
+        const seats = {
+            renas:   {x: 400, y: 180, name: "Rênas"},
+            rizgar:  {x: 280, y: 180, name: "Rizgar"},
+            bejna:   {x: 400, y: 300, name: "Bejna"},
+            asmin:   {x: 280, y: 300, name: "Asmîn"},
+            siyajin: {x: 400, y: 420, name: "Siyajîn"},
+            dara:    {x: 280, y: 420, name: "Dara"}
+        };
+
+        // --- INIT SELECTOR ---
+        const selector = document.getElementById('shotSelector');
+        shots.forEach((s, index) => {
+            const opt = document.createElement('option');
+            opt.value = index;
+            opt.text = `${s.code} - ${s.title}`;
+            selector.add(opt);
+        });
+
+        function jumpToShot(val) {
+            currentIndex = parseInt(val);
+            render();
+        }
+
+        function drawRoom() {
+            ctx.clearRect(0,0,canvas.width, canvas.height);
+            // Grid
+            ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1;
+            for(let i=0; i<800; i+=40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,600); ctx.stroke(); }
+            for(let i=0; i<600; i+=40) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(800,i); ctx.stroke(); }
+
+            // Fixtures
+            ctx.fillStyle = '#bae6fd'; ctx.fillRect(100, 0, 400, 15); // Windows
+            ctx.fillStyle = '#0284c7'; ctx.font='10px sans-serif'; ctx.fillText("WINDOWS", 300, 25);
+            
+            ctx.fillStyle = '#22c55e'; ctx.fillRect(360, 580, 80, 20); // Door
+            ctx.fillStyle = '#14532d'; ctx.fillText("DOOR", 400, 575);
+
+            ctx.fillStyle = '#334155'; ctx.fillRect(760, 150, 15, 300); // Board
+            ctx.save(); ctx.translate(750, 300); ctx.rotate(-Math.PI/2); 
+            ctx.fillStyle = '#64748b'; ctx.fillText("BOARD", 0, 0); ctx.restore();
+
+            ctx.fillStyle = '#d8b4fe'; ctx.fillRect(650, 50, 100, 60); // Desk
+            ctx.fillStyle = '#581c87'; ctx.fillText("TEACHER", 700, 85);
+            
+            // Hallway / Closet Areas
+            ctx.fillStyle = '#fca5a5'; ctx.fillRect(350, 610, 100, 50); ctx.fillStyle='#991b1b'; ctx.fillText("HALLWAY", 400, 640);
+            ctx.fillStyle = '#fca5a5'; ctx.fillRect(50, 480, 100, 80); ctx.fillStyle='#991b1b'; ctx.fillText("CLOSET", 100, 520);
+        }
+
+        function drawStudents(state, highlightId) {
+            // Draw Teacher if entering
+            if (state === "teacher_enter") {
+                ctx.beginPath(); ctx.arc(400, 560, 20, 0, Math.PI*2);
+                ctx.fillStyle = '#a855f7'; ctx.fill(); // Purple Teacher
+                ctx.fillStyle = '#fff'; ctx.textAlign='center'; ctx.fillText("Teacher", 400, 595);
+            }
+
+            Object.keys(seats).forEach(key => {
+                const s = seats[key];
+                let x = s.x; let y = s.y;
+                let color = '#60a5fa'; // Blue
+                let label = s.name;
+                let isStanding = false;
+                let isHiding = false;
+
+                // State Logic
+                if (state === 'bejna_stands' || state === 'bejna_pacing') {
+                    if (key === 'bejna') { x -= 30; color = '#f59e0b'; label += " (Stand)"; isStanding = true; }
+                    if (state === 'bejna_pacing' && key === 'bejna') { x -= 20; label = "Pacing..."; }
+                }
+                if (key === 'siyajin' && state === 'siyajin_jumps') { color = '#ef4444'; label += " (JUMP)"; isStanding = true; }
+                if (state === 'group_huddle') { if(!isStanding) { x = (x + 340)/2; y = (y + 300)/2; } }
+                if (state === 'scare_jump') { x -= 20; color = '#f87171'; label += " (Scare)"; } // Recoil Left
+                if (state === 'rizgar_hiding' && key === 'rizgar') { isHiding = true; color = '#94a3b8'; label += " (Hidden)"; }
+                if (state === 'group_slump') { color = '#93c5fd'; y += 5; } // Slump
+
+                // Desk (Always there unless hiding logic gets complex)
+                ctx.fillStyle = '#cbd5e1'; ctx.fillRect(x+10, y-20, 30, 40);
+
+                // Body
+                if (isHiding) {
+                     // Draw desk OVER body
+                     ctx.beginPath(); ctx.arc(x, y, 15, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill();
+                     ctx.fillStyle = 'rgba(203, 213, 225, 0.8)'; ctx.fillRect(x+10, y-20, 30, 40); // Desk opaque
+                } else {
+                    ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill();
+                    // Nose (Right)
+                    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+18, y); ctx.stroke();
+                }
+
+                if (key === highlightId) { ctx.strokeStyle = '#facc15'; ctx.lineWidth = 4; ctx.stroke(); }
+                ctx.fillStyle = '#0f172a'; ctx.font='10px sans-serif'; ctx.textAlign='center'; 
+                ctx.fillText(label, x, y+28);
+            });
+        }
+
+        function drawCamera(cam, move) {
+            if(!cam) return;
+            // Move Path
+            if (move) {
+                ctx.strokeStyle = '#ec4899'; ctx.setLineDash([5,5]);
+                if (move.type === 'pan') {
+                    ctx.beginPath(); ctx.arc(cam.x, cam.y, 50, move.angles[0]*Math.PI/180, move.angles[1]*Math.PI/180); ctx.stroke();
+                } else {
+                    ctx.beginPath(); ctx.moveTo(move.startX, move.startY); ctx.lineTo(move.endX, move.endY); ctx.stroke();
+                    ctx.beginPath(); ctx.arc(move.endX, move.endY, 3, 0, Math.PI*2); ctx.fillStyle='#ec4899'; ctx.fill();
+                }
+                ctx.setLineDash([]);
+            }
+            // Cam Icon
+            ctx.save(); ctx.translate(cam.x, cam.y); ctx.rotate(cam.angle * Math.PI/180);
+            ctx.fillStyle = 'rgba(236, 72, 153, 0.2)'; ctx.beginPath(); ctx.moveTo(0,0);
+            ctx.lineTo(500 * Math.cos(-cam.fov*Math.PI/360), 500 * Math.sin(-cam.fov*Math.PI/360));
+            ctx.lineTo(500 * Math.cos(cam.fov*Math.PI/360), 500 * Math.sin(cam.fov*Math.PI/360)); ctx.fill();
+            ctx.fillStyle = '#be185d'; ctx.beginPath(); ctx.moveTo(-8,-8); ctx.lineTo(12,0); ctx.lineTo(-8,8); ctx.fill();
+            ctx.restore();
+        }
+
+        function render() {
+            const s = shots[currentIndex];
+            document.getElementById('shotCode').innerText = s.code;
+            document.getElementById('shotTitle').innerText = s.title;
+            document.getElementById('shotLens').innerText = s.lens;
+            document.getElementById('shotType').innerText = s.type;
+            document.getElementById('shotAction').innerText = s.action;
+            document.getElementById('shotDialogue').innerText = s.dialogue;
+            
+            // Sync selector
+            document.getElementById('shotSelector').value = currentIndex;
+
+            drawRoom();
+            drawStudents(s.layoutState, s.highlight);
+            drawCamera(s.cam, s.move);
+        }
+
+        function changeShot(d) {
+            currentIndex += d;
+            if(currentIndex < 0) currentIndex = 0;
+            if(currentIndex >= shots.length) currentIndex = shots.length - 1;
+            render();
+        }
+
+        window.addEventListener('keydown', e => {
+            if(e.key === "ArrowRight") changeShot(1);
+            if(e.key === "ArrowLeft") changeShot(-1);
+        });
+        render();
+    </script>
+</body>
+</html>
