@@ -2,87 +2,104 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kinetic Cut Visualizer (Selectable)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Paper Monster - Production Viz</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        body { touch-action: manipulation; }
         canvas {
             background-color: #f1f5f9;
             display: block;
             margin: 0 auto;
             border-radius: 4px;
             box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
+            max-width: 100%;
         }
+        /* Custom scrollbar for better mobile feel */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
     </style>
 </head>
 <body class="bg-slate-200 h-screen flex flex-col font-sans text-slate-800 overflow-hidden">
 
     <!-- Header -->
-    <div class="bg-slate-900 text-white p-3 shadow-md flex justify-between items-center z-10">
+    <div class="bg-slate-900 text-white p-3 shadow-md flex justify-between items-center z-10 shrink-0">
         <div class="flex items-center gap-3">
-            <div class="bg-amber-500 text-slate-900 font-black px-2 py-1 rounded text-xs tracking-widest">COMPLETE LIST</div>
-            <h1 class="font-bold text-lg tracking-tight">Production Visualizer v8</h1>
+            <div class="bg-amber-500 text-slate-900 font-black px-2 py-1 rounded text-xs tracking-widest">PROD TOOL</div>
+            <h1 class="font-bold text-lg tracking-tight hidden sm:block">Visualizer v10</h1>
+            <h1 class="font-bold text-md tracking-tight sm:hidden">Viz v10</h1>
         </div>
-        <div class="text-xs text-slate-400">
-            Feature: <span class="text-amber-400">Shot Selection Menu</span>
+        <div class="text-xs text-slate-400 flex items-center gap-2">
+            <span id="progressCount" class="font-mono text-green-400 font-bold">0/27 Done</span>
         </div>
     </div>
 
-    <div class="flex-grow flex flex-col lg:flex-row gap-4 p-4 max-h-[calc(100vh-60px)]">
+    <div class="flex-grow flex flex-col lg:flex-row gap-4 p-2 sm:p-4 max-h-[calc(100vh-60px)]">
         
-        <!-- Left Sidebar -->
-        <div class="w-full lg:w-1/3 flex flex-col gap-3 h-full">
-            <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-300">
+        <!-- Left Sidebar (Controls) -->
+        <div class="w-full lg:w-1/3 flex flex-col gap-2 sm:gap-3 h-auto lg:h-full shrink-0">
+            <div class="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-slate-300">
                 
-                <!-- NEW: Shot Selector Dropdown -->
+                <!-- Shot Selector -->
                 <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Jump to Shot</label>
-                <select id="shotSelector" onchange="jumpToShot(this.value)" class="w-full mb-4 p-2 text-sm border-2 border-slate-200 rounded bg-slate-50 text-slate-700 font-semibold focus:outline-none focus:border-amber-500 transition-colors cursor-pointer hover:bg-white">
+                <select id="shotSelector" onchange="jumpToShot(this.value)" class="w-full mb-3 p-2 text-sm border-2 border-slate-200 rounded bg-slate-50 text-slate-700 font-semibold focus:outline-none focus:border-amber-500 transition-colors">
                     <!-- Options populated by JS -->
                 </select>
 
-                <div class="flex items-center justify-between mb-2">
-                    <button onclick="changeShot(-1)" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 font-bold transition">◀ Prev</button>
-                    <div class="text-center">
-                        <span class="block text-[10px] text-slate-400 uppercase tracking-widest font-bold">CURRENT</span>
-                        <span id="shotCode" class="block text-3xl font-black text-amber-600 leading-none">1.1</span>
+                <!-- Navigation Buttons -->
+                <div class="flex items-center justify-between mb-3">
+                    <button onclick="changeShot(-1)" class="px-4 py-3 bg-slate-100 active:bg-slate-300 rounded-lg text-slate-700 font-bold transition touch-manipulation flex-1 mr-2">◀ Prev</button>
+                    
+                    <div class="text-center w-24">
+                        <span class="block text-[10px] text-slate-400 uppercase tracking-widest font-bold">SHOT</span>
+                        <span id="shotCode" class="block text-3xl font-black text-amber-600 leading-none transition-colors duration-300">1.1</span>
                     </div>
-                    <button onclick="changeShot(1)" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-white font-bold transition">Next ▶</button>
+
+                    <button onclick="changeShot(1)" class="px-4 py-3 bg-slate-800 active:bg-slate-600 rounded-lg text-white font-bold transition touch-manipulation flex-1 ml-2">Next ▶</button>
                 </div>
-                <div class="text-center text-xs text-slate-400 mt-1">Use Left/Right Arrow Keys</div>
+
+                <!-- NEW: Done Button -->
+                <button id="markDoneBtn" onclick="toggleDone()" class="w-full py-3 rounded-lg font-bold border-2 transition-all duration-200 flex items-center justify-center gap-2 touch-manipulation border-slate-300 text-slate-400 bg-white">
+                    <span id="btnIcon" class="text-lg">⬜</span> <span id="btnText">Mark as Done</span>
+                </button>
             </div>
 
-            <div class="bg-white rounded-lg shadow-sm border border-slate-300 flex-grow overflow-y-auto flex flex-col">
-                <div class="p-4 border-b border-slate-100 bg-slate-50">
-                    <h2 id="shotTitle" class="font-bold text-lg text-slate-800">Title</h2>
+            <!-- Info Box -->
+            <div class="bg-white rounded-lg shadow-sm border border-slate-300 flex-grow overflow-y-auto flex flex-col min-h-[150px]">
+                <div class="p-3 sm:p-4 border-b border-slate-100 bg-slate-50">
+                    <h2 id="shotTitle" class="font-bold text-base sm:text-lg text-slate-800">Title</h2>
                     <div class="flex gap-2 mt-1">
                         <span id="shotLens" class="px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-bold uppercase rounded">Lens</span>
                         <span id="shotType" class="px-2 py-0.5 bg-purple-100 text-purple-800 text-[10px] font-bold uppercase rounded">Type</span>
                     </div>
                 </div>
-                <div class="p-4 space-y-4">
+                <div class="p-3 sm:p-4 space-y-3">
                     <div>
-                        <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Action / Blocking</h4>
-                        <p id="shotAction" class="text-sm font-medium text-slate-700">Action text...</p>
+                        <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Action</h4>
+                        <p id="shotAction" class="text-sm font-medium text-slate-700 leading-snug">Action text...</p>
                     </div>
-                    <div id="dialogueBox" class="bg-amber-50 p-3 rounded-l-2xl rounded-tr-2xl border border-amber-100">
+                    <div id="dialogueBox" class="bg-amber-50 p-3 rounded-l-xl rounded-tr-xl border border-amber-100">
                         <h4 class="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">Dialogue</h4>
-                        <p id="shotDialogue" class="text-sm italic text-amber-900">"Dialogue goes here..."</p>
+                        <p id="shotDialogue" class="text-sm italic text-amber-900 leading-snug">"Dialogue..."</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Right Panel -->
-        <div class="w-full lg:w-2/3 bg-white p-1 rounded-lg shadow-sm border border-slate-300 flex flex-col">
-            <div class="relative flex-grow bg-slate-50 overflow-hidden flex items-center justify-center rounded">
-                <canvas id="stageCanvas" width="800" height="600" class="max-w-full max-h-full object-contain"></canvas>
-                <div class="absolute top-2 right-2 bg-white/90 p-2 rounded border border-slate-200 text-[10px] shadow-sm">
-                    <div class="font-bold mb-1 text-slate-500 uppercase">Map Key</div>
-                    <div class="grid grid-cols-2 gap-x-3 gap-y-1">
-                        <div class="flex items-center"><span class="w-2 h-2 bg-blue-300 rounded-full mr-1"></span> Windows (Top)</div>
-                        <div class="flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span> Door (Bottom)</div>
-                        <div class="flex items-center"><span class="w-2 h-2 bg-purple-500 rounded-full mr-1"></span> Teacher (Top-Right)</div>
-                        <div class="flex items-center"><span class="w-2 h-2 bg-gray-600 rounded-full mr-1"></span> Board (Right)</div>
+        <!-- Right Panel (Canvas) -->
+        <div class="w-full lg:w-2/3 bg-white p-1 rounded-lg shadow-sm border border-slate-300 flex flex-col grow h-full overflow-hidden relative">
+            <div id="touchZone" class="relative flex-grow bg-slate-50 overflow-hidden flex items-center justify-center rounded w-full h-full">
+                <canvas id="stageCanvas" width="800" height="600" class="object-contain w-full h-full"></canvas>
+                
+                <!-- Map Key Overlay -->
+                <div class="absolute top-2 right-2 bg-white/90 p-2 rounded border border-slate-200 text-[9px] sm:text-[10px] shadow-sm pointer-events-none">
+                    <div class="font-bold mb-1 text-slate-500 uppercase">Key</div>
+                    <div class="grid grid-cols-2 gap-x-2 gap-y-1">
+                        <div class="flex items-center"><span class="w-2 h-2 bg-blue-300 rounded-full mr-1"></span> Window</div>
+                        <div class="flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span> Door</div>
+                        <div class="flex items-center"><span class="w-2 h-2 bg-purple-500 rounded-full mr-1"></span> Teacher</div>
+                        <div class="flex items-center"><span class="w-2 h-2 bg-gray-600 rounded-full mr-1"></span> Board</div>
                     </div>
                 </div>
             </div>
@@ -140,8 +157,15 @@
         ];
 
         let currentIndex = 0;
+        let doneShots = JSON.parse(localStorage.getItem('paperMonster_doneShots')) || {}; // Persistent storage
+
         const canvas = document.getElementById('stageCanvas');
         const ctx = canvas.getContext('2d');
+        const btnDone = document.getElementById('markDoneBtn');
+        const btnText = document.getElementById('btnText');
+        const btnIcon = document.getElementById('btnIcon');
+        const shotCodeDisplay = document.getElementById('shotCode');
+        const progressDisplay = document.getElementById('progressCount');
 
         // Layout Constants
         const DOOR_X = 400, DOOR_Y = 580;
@@ -157,20 +181,88 @@
             dara:    {x: 280, y: 420, name: "Dara"}
         };
 
-        // --- INIT SELECTOR ---
-        const selector = document.getElementById('shotSelector');
-        shots.forEach((s, index) => {
-            const opt = document.createElement('option');
-            opt.value = index;
-            opt.text = `${s.code} - ${s.title}`;
-            selector.add(opt);
-        });
+        // --- INIT SELECTOR & STATUS ---
+        function updateSelectorAndStatus() {
+            const selector = document.getElementById('shotSelector');
+            selector.innerHTML = ''; // Clear existing
+            
+            let doneCount = 0;
+
+            shots.forEach((s, index) => {
+                const isDone = doneShots[s.code];
+                if (isDone) doneCount++;
+
+                const opt = document.createElement('option');
+                opt.value = index;
+                // Add checkmark if done
+                opt.text = `${isDone ? '✓ ' : ''}${s.code} - ${s.title}`;
+                if (index === currentIndex) opt.selected = true;
+                selector.add(opt);
+            });
+
+            // Update Progress Header
+            progressDisplay.innerText = `${doneCount}/${shots.length} Done`;
+
+            // Update Button & Main Display based on current shot
+            const currentCode = shots[currentIndex].code;
+            if (doneShots[currentCode]) {
+                // Done State
+                btnDone.className = "w-full py-3 rounded-lg font-bold border-2 transition-all duration-200 flex items-center justify-center gap-2 touch-manipulation border-green-600 bg-green-500 text-white shadow-md";
+                btnText.innerText = "Completed";
+                btnIcon.innerText = "✅";
+                shotCodeDisplay.classList.add('text-green-600');
+                shotCodeDisplay.classList.remove('text-amber-600');
+            } else {
+                // To Do State
+                btnDone.className = "w-full py-3 rounded-lg font-bold border-2 transition-all duration-200 flex items-center justify-center gap-2 touch-manipulation border-slate-300 text-slate-400 bg-white hover:bg-slate-50";
+                btnText.innerText = "Mark as Done";
+                btnIcon.innerText = "⬜";
+                shotCodeDisplay.classList.add('text-amber-600');
+                shotCodeDisplay.classList.remove('text-green-600');
+            }
+        }
+
+        function toggleDone() {
+            const s = shots[currentIndex];
+            if (doneShots[s.code]) {
+                delete doneShots[s.code]; // Undo
+            } else {
+                doneShots[s.code] = true; // Mark done
+            }
+            // Save to browser
+            localStorage.setItem('paperMonster_doneShots', JSON.stringify(doneShots));
+            updateSelectorAndStatus();
+        }
 
         function jumpToShot(val) {
             currentIndex = parseInt(val);
             render();
         }
 
+        // --- TOUCH / SWIPE ---
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const touchZone = document.getElementById('touchZone');
+
+        touchZone.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, false);
+
+        touchZone.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, false);
+
+        function handleSwipe() {
+            if (touchEndX < touchStartX - 50) {
+                changeShot(1); // Swipe Left -> Next
+            }
+            if (touchEndX > touchStartX + 50) {
+                changeShot(-1); // Swipe Right -> Prev
+            }
+        }
+
+        // --- DRAWING ---
         function drawRoom() {
             ctx.clearRect(0,0,canvas.width, canvas.height);
             // Grid
@@ -224,17 +316,15 @@
                 if (state === 'rizgar_hiding' && key === 'rizgar') { isHiding = true; color = '#94a3b8'; label += " (Hidden)"; }
                 if (state === 'group_slump') { color = '#93c5fd'; y += 5; } // Slump
 
-                // Desk (Always there unless hiding logic gets complex)
+                // Desk
                 ctx.fillStyle = '#cbd5e1'; ctx.fillRect(x+10, y-20, 30, 40);
 
                 // Body
                 if (isHiding) {
-                     // Draw desk OVER body
                      ctx.beginPath(); ctx.arc(x, y, 15, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill();
                      ctx.fillStyle = 'rgba(203, 213, 225, 0.8)'; ctx.fillRect(x+10, y-20, 30, 40); // Desk opaque
                 } else {
                     ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill();
-                    // Nose (Right)
                     ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+18, y); ctx.stroke();
                 }
 
@@ -246,7 +336,6 @@
 
         function drawCamera(cam, move) {
             if(!cam) return;
-            // Move Path
             if (move) {
                 ctx.strokeStyle = '#ec4899'; ctx.setLineDash([5,5]);
                 if (move.type === 'pan') {
@@ -257,7 +346,6 @@
                 }
                 ctx.setLineDash([]);
             }
-            // Cam Icon
             ctx.save(); ctx.translate(cam.x, cam.y); ctx.rotate(cam.angle * Math.PI/180);
             ctx.fillStyle = 'rgba(236, 72, 153, 0.2)'; ctx.beginPath(); ctx.moveTo(0,0);
             ctx.lineTo(500 * Math.cos(-cam.fov*Math.PI/360), 500 * Math.sin(-cam.fov*Math.PI/360));
@@ -275,9 +363,7 @@
             document.getElementById('shotAction').innerText = s.action;
             document.getElementById('shotDialogue').innerText = s.dialogue;
             
-            // Sync selector
-            document.getElementById('shotSelector').value = currentIndex;
-
+            updateSelectorAndStatus();
             drawRoom();
             drawStudents(s.layoutState, s.highlight);
             drawCamera(s.cam, s.move);
@@ -294,7 +380,10 @@
             if(e.key === "ArrowRight") changeShot(1);
             if(e.key === "ArrowLeft") changeShot(-1);
         });
+        
+        // Initial Render
         render();
+
     </script>
 </body>
 </html>
