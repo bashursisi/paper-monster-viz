@@ -27,8 +27,8 @@
     <div class="bg-slate-900 text-white p-3 shadow-md flex justify-between items-center z-10 shrink-0">
         <div class="flex items-center gap-3">
             <div class="bg-amber-500 text-slate-900 font-black px-2 py-1 rounded text-xs tracking-widest">PROD TOOL</div>
-            <h1 class="font-bold text-lg tracking-tight hidden sm:block">Visualizer v10</h1>
-            <h1 class="font-bold text-md tracking-tight sm:hidden">Viz v10</h1>
+            <h1 class="font-bold text-lg tracking-tight hidden sm:block">Visualizer v11</h1>
+            <h1 class="font-bold text-md tracking-tight sm:hidden">Viz v11</h1>
         </div>
         <div class="text-xs text-slate-400 flex items-center gap-2">
             <span id="progressCount" class="font-mono text-green-400 font-bold">0/27 Done</span>
@@ -59,7 +59,7 @@
                     <button onclick="changeShot(1)" class="px-4 py-3 bg-slate-800 active:bg-slate-600 rounded-lg text-white font-bold transition touch-manipulation flex-1 ml-2">Next ▶</button>
                 </div>
 
-                <!-- NEW: Done Button -->
+                <!-- Done Button -->
                 <button id="markDoneBtn" onclick="toggleDone()" class="w-full py-3 rounded-lg font-bold border-2 transition-all duration-200 flex items-center justify-center gap-2 touch-manipulation border-slate-300 text-slate-400 bg-white">
                     <span id="btnIcon" class="text-lg">⬜</span> <span id="btnText">Mark as Done</span>
                 </button>
@@ -156,8 +156,13 @@
             { code: "3.27", title: "Slow Zoom - Rênas", lens: "Standard", type: "Zoom", action: "Fourth Wall Break.", dialogue: "'See? I am always right.'", cam: {x:500, y:200, angle:180, fov:40}, move: {startX:500, startY:200, endX:450, endY:200}, highlight: 'renas', layoutState: "sitting_all" }
         ];
 
-        let currentIndex = 0;
-        let doneShots = JSON.parse(localStorage.getItem('paperMonster_doneShots')) || {}; // Persistent storage
+        // --- PERSISTENT STATE ---
+        // Load Done Shots
+        let doneShots = JSON.parse(localStorage.getItem('paperMonster_doneShots')) || {}; 
+        
+        // Load Last Shot Index (Default to 0 if null/NaN)
+        let savedIndex = parseInt(localStorage.getItem('paperMonster_lastShotIndex'));
+        let currentIndex = isNaN(savedIndex) ? 0 : savedIndex;
 
         const canvas = document.getElementById('stageCanvas');
         const ctx = canvas.getContext('2d');
@@ -220,6 +225,9 @@
                 shotCodeDisplay.classList.add('text-amber-600');
                 shotCodeDisplay.classList.remove('text-green-600');
             }
+
+            // Save Current Position
+            localStorage.setItem('paperMonster_lastShotIndex', currentIndex);
         }
 
         function toggleDone() {
@@ -229,7 +237,7 @@
             } else {
                 doneShots[s.code] = true; // Mark done
             }
-            // Save to browser
+            // Save done status
             localStorage.setItem('paperMonster_doneShots', JSON.stringify(doneShots));
             updateSelectorAndStatus();
         }
